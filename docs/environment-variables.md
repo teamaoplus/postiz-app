@@ -1,16 +1,42 @@
 # Environment variables
 
-How to fill in every variable in the `postiz` service of `docker-compose.yaml`: what it does, whether you need it, and where to get the value.
+How to fill in every variable in the `postiz` service of the compose file: what it does, whether you need it, and where to get the value.
+
+We run Postiz with **Podman**, using `podman-compose.prod.yaml`. It is the same as `docker-compose.yaml` except that every image name is fully qualified (`docker.io/library/postgres:17-alpine` instead of `postgres:17-alpine`), because Podman does not assume Docker Hub for short image names. Edit the variables in `podman-compose.prod.yaml`.
 
 Only the **Required settings** must be filled in. Everything else is optional: leave a provider's variables empty and that channel simply won't appear when you add a channel.
 
 After changing any value, recreate the container so it picks it up:
 
 ```bash
-docker compose up -d --force-recreate postiz
+podman-compose -f podman-compose.prod.yaml up -d --force-recreate postiz
 ```
 
-In the examples below, `FRONTEND_URL` is `http://localhost:4007`. Replace it with your own public URL (for example `https://postiz.example.com`).
+In the examples below, `FRONTEND_URL` is `http://localhost:4007`. Replace it with your own URL (for example `https://postiz.example.com`).
+
+## Running with Podman
+
+| Task | Command |
+| --- | --- |
+| Start everything | `podman-compose -f podman-compose.prod.yaml up -d` |
+| Stop everything | `podman-compose -f podman-compose.prod.yaml down` |
+| Pull newer images | `podman-compose -f podman-compose.prod.yaml pull` |
+| Check containers | `podman ps` |
+| Follow Postiz logs | `podman logs -f postiz` |
+| Check the variables the container actually got | `podman exec postiz printenv \| sort` |
+
+`podman compose` (with a space) also works, but on this machine it hands off to the `docker-compose` plugin; `podman-compose` is the native tool.
+
+Podman-specific notes:
+
+- **Start on boot:** Podman has no always-running daemon, so `restart: always` does not bring containers back after a reboot by itself. Enable the restart service once: `systemctl --user enable --now podman-restart.service` (rootless) or `sudo systemctl enable --now podman-restart.service` (rootful). For rootless containers to start without anyone logged in, also run `sudo loginctl enable-linger $USER`.
+- **Ports below 1024:** rootless Podman cannot bind ports such as 80 or 443. Keep Postiz on `4007` and put a reverse proxy in front for HTTPS, or lower the limit with `sudo sysctl net.ipv4.ip_unprivileged_port_start=80`.
+- **Short image names:** if you add a service, write its image fully qualified (`docker.io/...` or `ghcr.io/...`), or Podman will prompt or fail when pulling.
+- **Secrets in the compose file:** `podman-compose.prod.yaml` holds real values such as `JWT_SECRET`. Don't commit it to git once you fill in API keys.
+
+### Using a LAN IP address
+
+If `FRONTEND_URL` is a private address such as `http://192.168.x.x:4007`, connecting channels still works, because the OAuth redirect happens in your own browser. But platforms that download your media from Postiz (Instagram, Threads, TikTok, Pinterest and others) cannot reach a private IP, so posts with images or video to them will fail. For those, Postiz needs a public HTTPS domain, or use Cloudflare R2 storage so media is served from a public bucket.
 
 ## Required settings
 
