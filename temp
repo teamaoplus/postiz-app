@@ -1,0 +1,5 @@
+cd /home/aoplus/postiz-app && cp .env.example .env && mkdir -p uploads
+sed -i 's#^DATABASE_URL=.*#DATABASE_URL="postgresql://postiz-local:postiz-local-pwd@localhost:5432/postiz-db-local"#' .env
+sed -i "s#^JWT_SECRET=.*#JWT_SECRET=\"$(openssl rand -hex 48)\"#" .env
+sed -i -e "s#^\#UPLOAD_DIRECTORY=.*#UPLOAD_DIRECTORY=\"$PWD/uploads\"#" -e 's#^\#NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY=.*#NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY="/uploads"#' .env
+
